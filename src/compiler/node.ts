@@ -3,8 +3,6 @@
 // - varType, retTypeなどをetypeとしてまとめる。etypeはexpressionTypeの略
 // - Fnの型がargTypeとretTypeに分かれているのをFnTypeSourceにまとめる
 
-
-
 export type Loc = {
 	start: number;
 	end: number;
