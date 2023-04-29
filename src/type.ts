@@ -134,7 +134,7 @@ export function getTypeBySource(typeSource: Ast.TypeSource): Type {
 			case 'str':
 			case 'any':
 			case 'void': {
-				if (typeSource.inner == null) {
+				if (typeSource.inner === null) {
 					return T_SIMPLE(typeSource.name);
 				}
 				break;
@@ -143,7 +143,7 @@ export function getTypeBySource(typeSource: Ast.TypeSource): Type {
 			case 'arr':
 			case 'obj': {
 				let innerType: Type;
-				if (typeSource.inner != null) {
+				if (typeSource.inner !== null) {
 					innerType = getTypeBySource(typeSource.inner);
 				} else {
 					innerType = T_SIMPLE('any');
