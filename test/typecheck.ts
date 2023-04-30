@@ -1,35 +1,44 @@
-
-/* eslint-disable prefer-const */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /**
- *  Typechecker Tests!
- */
+	* Typechecker Tests!
+	*/
 
 import * as assert from 'assert';
-import { Parser, Ast, } from '../src';
+import { Parser } from '../src';
 import * as Compiler from '../src/compiler/node';
 
-const tryparse = (program: string): Ast.Node[] => {
+const tryinit = (program: string): Compiler.Node[] => {
 	const parser = new Parser();
 	const ast = parser.parse(program);
-	return ast;
-}
+	console.log(ast);
+	const initTypedNode = Compiler.fromAsts(ast);
+	return initTypedNode;
+};
 
-
-
-const eq = (a: Compiler.Node, b: Compiler.TypeSource): void => {
-	if ('retType' in a) {
-		assert.deepEqual(a.retType, b);
-	} else if ('varType' in a) {
-		assert.deepEqual(a.varType, b);
-	} {
-		assert(false, "no retType");
+const eq = (a: Compiler.Node, b: Compiler.Type): void => {
+	if ('etype' in a) {
+		assert.deepStrictEqual(a.etype, b);
 	}
 };
 
-
-
 test.concurrent('number literal', async () => {
-	const res = tryparse("let a: num = 1");
-	console.log(res);
+	const res = tryinit('1');
+	eq(res[0]!, Compiler.NumT);
 });
 
+test.concurrent('bool literal', async () => {
+	const trueRes = tryinit('true');
+	eq(trueRes[0]!, Compiler.BoolT);
+	const falseRes = tryinit('false');
+	eq(falseRes[0]!, Compiler.BoolT);
+});
+
+test.concurrent('string literal', async () => {
+	const res = tryinit('"hello"');
+	eq(res[0]!, Compiler.StrT);
+});
+
+test.concurrent('null literal', async () => {
+	const res = tryinit('null');
+	eq(res[0]!, Compiler.NullT);
+});

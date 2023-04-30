@@ -197,25 +197,25 @@ export type Tmpl = NodeBase & {
 
 export type Str = NodeBase & {
 	type: 'str'; // 文字列リテラル
-	etype: 'str';
+	etype: StrT;
 	value: string; // 文字列
 };
 
 export type Num = NodeBase & {
 	type: 'num'; // 数値リテラル
-	etype: 'num';
+	etype: NumT;
 	value: number; // 数値
 };
 
 export type Bool = NodeBase & {
 	type: 'bool'; // 真理値リテラル
-	etype: 'bool';
+	etype: BoolT;
 	value: boolean; // 真理値
 };
 
 export type Null = NodeBase & {
 	type: 'null'; // nullリテラル
-	etype: 'null';
+	etype: NullT;
 };
 
 // objの型については悩んでいる
@@ -223,7 +223,7 @@ export type Null = NodeBase & {
 // 可能な限りどのようなフィールドを持つかを推論し、推論不能な部分をテーブル化するような形にしたい。
 export type Obj = NodeBase & {
 	type: 'obj'; // オブジェクト
-	etype: 'obj'; // TODO ちゃんとした推論をするかも?
+	etype: ObjT; // TODO ちゃんとした推論をするかも?
 	initValue: Map<string, Expression>; // 初期化時の値を持っておくのは推論に有用なはず
 };
 
@@ -302,15 +302,16 @@ export type TypeVar = {
 	name: string;
 }
 
-export type IntT = NamedType<'int'>;
-export const IntT: IntT = builtInType('int');
+export type NumT = NamedType<'num'>;
+export const NumT: NumT = builtInType('num');
 export type BoolT = NamedType<'bool'>;
 export const BoolT: BoolT = builtInType('bool');
 export type StrT = NamedType<'str'>;
 export const StrT: StrT = builtInType('str');
 export type NullT = NamedType<'null'>;
 export const NullT: NullT = builtInType('null');
-
+export type ObjT = NamedType<'obj'>;
+export const ObjT: ObjT = builtInType('obj');
 
 function builtInType<name extends string>(name: name): NamedType<name> {
 	return { type: 'namedType', name: name, inner: [] };
@@ -325,6 +326,9 @@ export function fromAsts(input: Ast.Node[]): Node[] {
 // - etype(expressionTypeの略)を追加。自明なリテラル以外はImplicitAnyを一旦入れて後で推論していく
 // - Fnの型がargTypeとretTypeに分かれているのをFnTypeSourceにまとめる TODO 勢いで書いたけどちゃんと見てない。ほんまか
 function fromAst(input: Ast.Node): Node {
+	if (expressionTypes.includes(input.type)) {
+		return fromAstExpr(input as Ast.Expression);
+	}
 	switch (input.type) {
 		case 'def':
 			return { type: input.type, name: input.name, expr: fromAstExpr(input.expr), mut: input.mut, attr: input.attr.map((attr) => fromAstAttr(attr)) };
@@ -336,19 +340,19 @@ function fromAst(input: Ast.Node): Node {
 function fromAstExpr(input: Ast.Expression): Expression {
 	switch (input.type) {
 		case 'num':
-			return { type: 'num', etype: 'num', value: input.value };
+			return { type: 'num', etype: NumT, value: input.value };
 		case 'bool':
-			return { type: 'bool', etype: 'bool', value: input.value };
+			return { type: 'bool', etype: BoolT, value: input.value };
 		case 'str':
-			return { type: 'str', etype: 'str', value: input.value };
+			return { type: 'str', etype: StrT, value: input.value };
 		case 'null':
-			return { type: 'null', etype: 'null' };
+			return { type: 'null', etype: NullT };
 		case 'obj': {
 			const values = new Map<string, Expression>();
 			for (const [k, v] of input.value) {
 				values.set(k, fromAstExpr(v));
 			}
-			return { type: 'obj', etype: 'obj', initValue: values };
+			return { type: 'obj', etype: ObjT, initValue: values };
 		}
 		case 'call':
 			return { type: 'call', etype: ImplicitAny, target: fromAstExpr(input.target), args: input.args.map((arg) => fromAstExpr(arg)) };
