@@ -4,7 +4,7 @@ import type * as Ast from '../node.js';
 // aiscriptの意味論上の型をetypeフィールドに持たせる。typeフィールドと被る場合はあるが区別する
 // - Fnの型がargsとreturnに分かれているのもFnTypeにまとめる
 // ImplicitAnyとExplicitAnyを区別する。
-// - ImplicitAnyが型推論完了時に残っていた場合はエラーにするという仕様で行きたい。
+// - ImplicitAny(TypeVar)が型推論完了時に残っていた場合はエラーにするという仕様で行きたい。
 // - ExplicitAnyに関してはバリデーションを行うようなコードを生成する。
 
 export type Loc = {
@@ -166,7 +166,7 @@ export type Fn = NodeBase & {
 	type: 'fn'; // 関数
 	args: {
 		name: string; // 引数名
-		argType?: Type; // 引数の型
+		etype: Type; // 引数の型
 	}[];
 	etype: Type; // 戻り値の型
 	children: (Statement | Expression)[]; // 本体処理
@@ -270,20 +270,8 @@ export type Prop = NodeBase & {
 
 // Type source
 
-export type Type = NamedType<string> | FnType | ImplicitAny | TypeVar;
+export type Type = NamedType<string> | FnType | TypeVar;
 
-// 型が書かれていない場合一旦これになる。
-// 型推論完了時にこれが残っている場合型エラーとする予定
-// explicitにany指定した場合は変数使用時に型をバリデーションするコードを吐く？
-export type ImplicitAny = {
-	type: 'implicitAny';
-	etype: 'implicitAny'
-}
-
-export const ImplicitAny: ImplicitAny = {
-	type: 'implicitAny',
-	etype: 'implicitAny',
-};
 
 export type NamedType<name extends string> = {
 	type: 'namedType'; // 名前付き型
@@ -300,6 +288,12 @@ export type FnType = {
 export type TypeVar = {
 	type: 'typeVar';
 	name: string;
+}
+
+let typeVarCounter: number = 0;
+function genTypeVar(): TypeVar {
+	const name = `T${typeVarCounter++}`;
+	return { type: 'typeVar', name };
 }
 
 export type NumT = NamedType<'num'>;
@@ -323,17 +317,27 @@ export function fromAsts(input: Ast.Node[]): Node[] {
 
 // Ast.Nodeとの差分
 // - typeをNodeから分離し、loc等を消す
-// - etype(expressionTypeの略)を追加。自明なリテラル以外はImplicitAnyを一旦入れて後で推論していく
-// - Fnの型がargTypeとretTypeに分かれているのをFnTypeSourceにまとめる TODO 勢いで書いたけどちゃんと見てない。ほんまか
+// - etype(expressionTypeの略)を追加。自明なリテラル以外はTypeVarを一旦入れて後で推論していく
+// - Fnの型がargTypeとretTypeに分かれているのをFnTypeSourceにまとめる
 function fromAst(input: Ast.Node): Node {
 	if (expressionTypes.includes(input.type)) {
 		return fromAstExpr(input as Ast.Expression);
+	} else if (statementTypes.includes(input.type)) {
+		return fromStatement(input as Ast.Statement);
+	} else {
+		throw new TypeError(`TODO: node type: ${input.type}`);
 	}
+}
+
+function fromStatement(input: Ast.Statement): Statement {
 	switch (input.type) {
 		case 'def':
 			return { type: input.type, name: input.name, expr: fromAstExpr(input.expr), mut: input.mut, attr: input.attr.map((attr) => fromAstAttr(attr)) };
+		case 'return':
+			return { type: input.type, expr: fromAstExpr(input.expr) };
+
 		default:
-			throw new TypeError(`TODO: node type: ${input.type}`);
+			throw new TypeError(`TODO: statement type: ${input.type}`);
 	}
 }
 
@@ -354,8 +358,33 @@ function fromAstExpr(input: Ast.Expression): Expression {
 			}
 			return { type: 'obj', etype: ObjT, initValue: values };
 		}
+		case 'fn': {
+			const args = input.args.map(({ name, argType }) => {
+				const eType = (argType === null) ? genTypeVar() : fromAstTypeSource(argType);
+				return { type: 'arg', name, etype: eType };
+			});
+
+			const retType = (input.retType === null) ? genTypeVar() : fromAstTypeSource(input.retType);
+
+			const fnType: FnType = { type: 'fnType', args: args.map((arg) => arg.etype), return: retType };
+
+			const children: Statement[] = input.children.map((child) => {
+				if (expressionTypes.includes(child.type)) {
+					return { type: 'return', expr: fromAstExpr(child as Ast.Expression) };
+				} else {
+					return fromStatement(child as Ast.Statement);
+				}
+			})
+
+			return {
+				type: 'fn', args, etype: fnType, children,
+			};
+		}
+
 		case 'call':
-			return { type: 'call', etype: ImplicitAny, target: fromAstExpr(input.target), args: input.args.map((arg) => fromAstExpr(arg)) };
+			return { type: 'call', etype: genTypeVar(), target: fromAstExpr(input.target), args: input.args.map((arg) => fromAstExpr(arg)) };
+		case 'identifier':
+			return { type: input.type, etype: genTypeVar(), name: input.name };
 		default:
 			throw new TypeError(`TODO: expression type: ${input.type}`);
 	}
@@ -364,6 +393,7 @@ function fromAstExpr(input: Ast.Expression): Expression {
 function fromAstAttr(input: Ast.Attribute): Attribute {
 	return { type: input.type, name: input.name, value: fromAstExpr(input.value) };
 }
+
 
 function fromAstTypeSource(input: Ast.TypeSource): Type {
 	switch (input.type) {
