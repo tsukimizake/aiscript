@@ -77,7 +77,7 @@ export type Meta = NodeBase & {
 export type Definition = NodeBase & {
 	type: 'def'; // 変数宣言文
 	name: string; // 変数名
-	varType?: TypeSource; // 変数の型
+	varType: TypeSource | null; // 変数の型
 	expr: Expression; // 式
 	mut: boolean; // ミュータブルか否か
 	attr: Attribute[]; // 付加された属性
@@ -154,7 +154,7 @@ export type If = NodeBase & {
 		cond: Expression; // elifの条件式
 		then: Statement | Expression;// elif節
 	}[];
-	else?: Statement | Expression; // else節
+	else: Statement | Expression | null; // else節
 };
 
 export type Fn = NodeBase & {
@@ -174,7 +174,7 @@ export type Match = NodeBase & {
 		q: Expression; // 条件
 		a: Statement | Expression; // 結果
 	}[];
-	default?: Statement | Expression; // デフォルト値
+	default: Statement | Expression | null; // デフォルト値
 };
 
 export type Block = NodeBase & {
