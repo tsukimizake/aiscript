@@ -1,4 +1,7 @@
-import type * as Ast from '../node.js';
+import type * as Ast from '../node';
+import { builtInTypes } from './builtins';
+import { BoolT, FnType, NullT, NumT, ObjT, StrT, Type } from './type';
+import * as Types from './type';
 // Ast.Nodeとの差分
 // - typeをNodeから分離し、loc等を消す
 // aiscriptの意味論上の型をetypeフィールドに持たせる。typeフィールドと被る場合はあるが区別する
@@ -146,7 +149,7 @@ export type Assign = NodeBase & {
 
 export type Not = NodeBase & {
 	type: 'not'; // 否定
-	etype: { type: 'fn', args: [BoolT], return: BoolT };
+	etype: { type: 'fn', args: [BoolT], ret: BoolT };
 	expr: Expression; // 式
 };
 
@@ -268,48 +271,6 @@ export type Prop = NodeBase & {
 	name: string; // プロパティ名
 };
 
-// Type source
-
-export type Type = NamedType<string> | FnType | TypeVar;
-
-
-export type NamedType<name extends string> = {
-	type: 'namedType'; // 名前付き型
-	name: name; // 型名
-	inner: Type[]; // 内側の型
-};
-
-export type FnType = {
-	type: 'fnType'; // 関数の型
-	args: Type[];
-	return: Type;
-};
-
-export type TypeVar = {
-	type: 'typeVar';
-	name: string;
-}
-
-let typeVarCounter: number = 0;
-function genTypeVar(): TypeVar {
-	const name = `T${typeVarCounter++}`;
-	return { type: 'typeVar', name };
-}
-
-export type NumT = NamedType<'num'>;
-export const NumT: NumT = builtInType('num');
-export type BoolT = NamedType<'bool'>;
-export const BoolT: BoolT = builtInType('bool');
-export type StrT = NamedType<'str'>;
-export const StrT: StrT = builtInType('str');
-export type NullT = NamedType<'null'>;
-export const NullT: NullT = builtInType('null');
-export type ObjT = NamedType<'obj'>;
-export const ObjT: ObjT = builtInType('obj');
-
-function builtInType<name extends string>(name: name): NamedType<name> {
-	return { type: 'namedType', name: name, inner: [] };
-}
 
 export function fromAsts(input: Ast.Node[]): Node[] {
 	return input.map((input) => fromAst(input));
@@ -360,13 +321,14 @@ function fromAstExpr(input: Ast.Expression): Expression {
 		}
 		case 'fn': {
 			const args = input.args.map(({ name, argType }) => {
-				const eType = (argType === null) ? genTypeVar() : fromAstTypeSource(argType);
+				const eType = (argType === null) ? Types.genTypeVar() : fromAstTypeSource(argType);
 				return { type: 'arg', name, etype: eType };
 			});
 
-			const retType = (input.retType === null) ? genTypeVar() : fromAstTypeSource(input.retType);
+			const retType = (input.retType === null) ? Types.genTypeVar() : fromAstTypeSource(input.retType);
 
-			const fnType: FnType = { type: 'fnType', args: args.map((arg) => arg.etype), return: retType };
+
+			const fnType: FnType = { type: 'fnType', args: args.map((arg) => arg.etype), ret: retType };
 
 			const children: Statement[] = input.children.map((child) => {
 				if (expressionTypes.includes(child.type)) {
@@ -374,17 +336,21 @@ function fromAstExpr(input: Ast.Expression): Expression {
 				} else {
 					return fromStatement(child as Ast.Statement);
 				}
-			})
+			});
 
-			return {
-				type: 'fn', args, etype: fnType, children,
-			};
+			return { type: 'fn', args, etype: fnType, children };
 		}
 
-		case 'call':
-			return { type: 'call', etype: genTypeVar(), target: fromAstExpr(input.target), args: input.args.map((arg) => fromAstExpr(arg)) };
+		case 'call': {
+			return { type: 'call', etype: Types.genTypeVar(), target: fromAstExpr(input.target), args: input.args.map((arg) => fromAstExpr(arg)) };
+		}
+
 		case 'identifier':
-			return { type: input.type, etype: genTypeVar(), name: input.name };
+			const builtInType = builtInTypes.get(input.name);
+			if (builtInType) {
+				return { type: 'identifier', etype: builtInType, name: input.name };
+			}
+			return { type: input.type, etype: Types.genTypeVar(), name: input.name };
 		default:
 			throw new TypeError(`TODO: expression type: ${input.type}`);
 	}
@@ -393,7 +359,6 @@ function fromAstExpr(input: Ast.Expression): Expression {
 function fromAstAttr(input: Ast.Attribute): Attribute {
 	return { type: input.type, name: input.name, value: fromAstExpr(input.value) };
 }
-
 
 function fromAstTypeSource(input: Ast.TypeSource): Type {
 	switch (input.type) {
@@ -404,6 +369,6 @@ function fromAstTypeSource(input: Ast.TypeSource): Type {
 				return { type: 'namedType', name: input.name, inner: [fromAstTypeSource(input.inner)] };
 			}
 		case 'fnTypeSource':
-			return { type: 'fnType', args: input.args.map((arg) => fromAstTypeSource(arg)), return: fromAstTypeSource(input.result) };
+			return { type: 'fnType', args: input.args.map((arg) => fromAstTypeSource(arg)), ret: fromAstTypeSource(input.result) };
 	}
 }
