@@ -18,8 +18,9 @@ export type TypeVar = {
 }
 
 export type TypeScheme = {
+	type: 'typeScheme';
 	forall: TypeVar[];
-	type: Type;
+	t: Type;
 }
 
 let typeVarCounter = 0;
