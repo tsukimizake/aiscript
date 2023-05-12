@@ -1,102 +1,137 @@
 import * as Types from './type';
+import type { Type, TypeScheme, TypeVar } from './type';
 
 // e1:T1, e2:T1, e3:numのときに、unify(e1, e3)したらe2にも伝播してe1,e2,e3全てnumになる動作にしたい
-// そのために参照を活用する
+// 型変数の同値関係をUnionFind木として得る
 // TODO エラー時loc表示
-export function unify(lhs: { etype: Types.Type }, rhs: { etype: Types.Type }): void {
-	// 参照が同じなら何もしない
-	if (lhs.etype === rhs.etype) return;
 
-	// どちらかがTypeVarなら参照を統一する
-	if (lhs.etype.type === 'typeVar') {
-		lhs.etype = rhs.etype;
-		return;
-	}
-	if (rhs.etype.type === 'typeVar') {
-		rhs.etype = lhs.etype;
-		return;
+export class Unifyer {
+	constructor() {
+		this.ufMap = new Map();
 	}
 
-	// 両方ともnamedTypeなら、名前の一致を確認してinnerをunify
-	if (lhs.etype.type === 'namedType' && rhs.etype.type === 'namedType') {
-		if (lhs.etype.name === rhs.etype.name) {
-			unifyNamedTypeInners(lhs.etype, rhs.etype);
-			return;
-		} else {
-			throw new TypeError(`型が一致しません。${lhs.etype.name}と${rhs.etype.name}は一致しません。`);
-		}
+	ufMap: Map<Type, Type>;
+
+	public union(a: Type, b: Type): void {
+		const aRoot = this.find(a);
+		const bRoot = this.find(b);
+		if (aRoot === bRoot) return;
+		this.ufMap.set(aRoot, bRoot);
+		this.ufMap.set(bRoot, bRoot);
 	}
 
-	// 両方ともfnTypeなら、argsとretの型をunifyして、一致していればOK
-	if (lhs.etype.type === 'fnType' && rhs.etype.type === 'fnType') {
-		if (lhs.etype.args.length === rhs.etype.args.length) {
-			for (let i = 0; i < lhs.etype.args.length; i++) {
-				unify({ etype: lhs.etype.args[i]! }, { etype: rhs.etype.args[i]! });
+	public find(a: Type): Type {
+		let parent = this.ufMap.get(a);
+
+		while (true) {
+			if (parent === undefined || parent === a) {
+				return a;
+			} else {
+				// parentにさらにparentがある場合を再帰的に見に行って、見つけたらpath compression
+				const res = this.find(parent);
+				this.ufMap.set(a, res);
+				return res;
 			}
-			unify({ etype: lhs.etype.ret }, { etype: rhs.etype.ret });
+		}
+	}
+
+	public unify(lhs: Type, rhs: Type): void {
+		const lParent = this.find(lhs);
+		const rParent = this.find(rhs);
+
+		// 参照が同じなら何もしない
+		if (lParent === rParent) return;
+
+		// どちらかがTypeVarなら参照を統一する
+		if (lParent.type === 'typeVar') {
+			this.union(lhs, rhs);
 			return;
+		}
+		if (rParent.type === 'typeVar') {
+			return this.union(rhs, lhs);
+		}
+
+		// 両方ともnamedTypeなら、名前の一致を確認してinnerをunify
+
+		if (lParent.type === 'namedType' && rParent.type === 'namedType') {
+			if (lParent.name === rParent.name) {
+				this.unifyNamedTypeInners(lParent, rParent);
+				return;
+			} else {
+				throw new TypeError(`型が一致しません。${lParent}と${rParent}は一致しません。`);
+			}
+		}
+
+		// 両方ともfnTypeなら、argsとretの型をunifyして、一致していればOK
+		if (lParent.type === 'fnType' && rParent.type === 'fnType') {
+			if (lParent.args.length === rParent.args.length) {
+				for (let i = 0; i < lParent.args.length; i++) {
+					this.unify(lParent.args[i]!, rParent.args[i]!);
+				}
+				this.unify(lParent.ret, rParent.ret);
+				return;
+			} else {
+				throw new TypeError(`引数の数が一致しません。${lParent.args.length}と${rParent.args.length}は一致しません。`);
+			}
+		}
+
+		// 片方typeschemeなら、forallの型を新しいTypeVarに置き換えてunify
+		if (lParent.type === 'typeScheme') {
+			const lParentType = this.instanciateTypeScheme(lParent);
+			this.unify(lParentType, rParent);
+		}
+		if (rParent.type === 'typeScheme') {
+			this.unify(rParent, lParent);
+		}
+
+		throw new Error(`unify failed! ${lParent} and ${rParent}`);
+	}
+
+	unifyNamedTypeInners(lhs: Types.NamedType<string>, rhs: Types.NamedType<string>) {
+		if (lhs.inner.length === rhs.inner.length) {
+			for (let i = 0; i < lhs.inner.length; i++) {
+				this.unify(lhs.inner[i]!, rhs.inner[i]!);
+			}
 		} else {
-			throw new TypeError(`引数の数が一致しません。${lhs.etype.args.length}と${rhs.etype.args.length}は一致しません。`);
+			throw new TypeError(`型引数の数が一致しません。${lhs.inner.length}と${rhs.inner.length}は一致しません。`);
 		}
 	}
 
-	// 片方typesschemeなら、forallの型を新しいTypeVarに置き換えてunify
-	if (lhs.etype.type === 'typeScheme') {
-		const lhsType = instanciateTypeScheme(lhs.etype);
-		unify({ etype: lhsType }, rhs);
-	}
-	if (rhs.etype.type === 'typeScheme') {
-		const rhsType = instanciateTypeScheme(rhs.etype);
-		unify(lhs, { etype: rhsType });
-	}
-
-	throw new Error(`unify failed! ${lhs.etype} and ${rhs.etype}`);
-}
-
-function unifyNamedTypeInners(lhs: Types.NamedType<string>, rhs: Types.NamedType<string>) {
-	if (lhs.inner.length === rhs.inner.length) {
-		for (let i = 0; i < lhs.inner.length; i++) {
-			unify({ etype: lhs.inner[i]! }, { etype: rhs.inner[i]! });
+	instanciateTypeScheme(scheme: TypeScheme): Type {
+		// ここでは元のetypeに影響を与えないようにする
+		let res: Type = scheme;
+		for (const typeVar of scheme.forall) {
+			const newTV = Types.genTypeVar();
+			res = this.replaceTypeVar(res, typeVar, newTV);
 		}
-	} else {
-		throw new TypeError(`型引数の数が一致しません。${lhs.inner.length}と${rhs.inner.length}は一致しません。`);
+		return res;
 	}
-}
 
-function instanciateTypeScheme(etype: Types.TypeScheme): Types.Type {
-	// ここでは元のetypeに影響を与えないようにする
-	let res = { ...etype.t };
-	for (const typeVar of etype.forall) {
-		const newTV = Types.genTypeVar();
-		res = replaceTypeVar(res, typeVar, newTV);
-	}
-	return res;
-}
-
-function replaceTypeVar(t: Types.Type, typeVar: Types.TypeVar, newTV: Types.TypeVar): Types.Type {
-	if (t.type === 'typeVar') {
-		if (t.name === typeVar.name) {
-			return newTV;
+	replaceTypeVar(t: Type, typeVar: TypeVar, newTV: TypeVar): Type {
+		if (t.type === 'typeVar') {
+			if (t.name === typeVar.name) {
+				return newTV;
+			} else {
+				return t;
+			}
+		} else if (t.type === 'namedType') {
+			return {
+				type: 'namedType',
+				name: t.name,
+				inner: t.inner.map((inner) => this.replaceTypeVar(inner, typeVar, newTV)),
+			};
+		} else if (t.type === 'fnType') {
+			return {
+				type: 'fnType',
+				args: t.args.map((arg) => this.replaceTypeVar(arg, typeVar, newTV)),
+				ret: this.replaceTypeVar(t.ret, typeVar, newTV),
+			};
+		} else if (t.type === 'typeScheme') {
+			// TODO test
+			const t1 = this.instanciateTypeScheme(t);
+			return this.replaceTypeVar(t1, typeVar, newTV);
 		} else {
-			return t;
+			throw new Error(`replaceTypeVar failed! ${t}`);
 		}
-	} else if (t.type === 'namedType') {
-		return {
-			type: 'namedType',
-			name: t.name,
-			inner: t.inner.map((inner) => replaceTypeVar(inner, typeVar, newTV)),
-		};
-	} else if (t.type === 'fnType') {
-		return {
-			type: 'fnType',
-			args: t.args.map((arg) => replaceTypeVar(arg, typeVar, newTV)),
-			ret: replaceTypeVar(t.ret, typeVar, newTV),
-		};
-	} else if (t.type === 'typeScheme') {
-		// TODO test
-		const t1 = instanciateTypeScheme(t);
-		return replaceTypeVar(t1, typeVar, newTV);
-	} else {
-		throw new Error(`replaceTypeVar failed! ${t}`);
 	}
 }

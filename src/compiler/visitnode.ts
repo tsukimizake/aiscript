@@ -1,7 +1,11 @@
 import * as Node from './node';
 
-export function visitNode<T>(ctx: T, node: Node.Node, fn: (c: T, node: Node.Node) => Node.Node): Node.Node {
-	const result = fn(ctx, node);
+export function visitNodes<T>(ctx: { val: T }, nodes: Node.Node[], fn: (c: T, node: Node.Node) => Node.Node): Node.Node[] {
+	// ctxを更新しながら再帰的にvisitNodeを呼び出す
+	return nodes.map(node => visitNode(ctx, node, fn));
+}
+export function visitNode<T>(ctx: { val: T }, node: Node.Node, fn: (c: T, node: Node.Node) => Node.Node): Node.Node {
+	const result = fn(ctx.val, node);
 
 	// nested nodes
 	switch (result.type) {

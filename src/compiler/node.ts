@@ -149,7 +149,7 @@ export type Assign = NodeBase & {
 
 export type Not = NodeBase & {
 	type: 'not'; // 否定
-	etype: { type: 'fn', args: [BoolT], ret: BoolT };
+	etype: BoolT; // 戻り値の型
 	expr: Expression; // 式
 };
 

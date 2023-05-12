@@ -81,7 +81,6 @@ test.concurrent('fn with many type decls', async () => {
 	assert.deepEqual((res[0] as any).expr.args[1]!.etype, NumT);
 	assert.deepEqual((res[0] as any).expr.etype, { type: 'fnType', args: [NumT, NumT], ret: NumT });
 
-	console.log(res[1]);
 	assertTypeVar((res[1] as any).etype);
 	assertTypeVar((res[1] as any).target.etype);
 	assert.deepEqual((res[1] as any).args.map((arg: { etype: Type; }) => arg.etype), [NumT, NumT]);
