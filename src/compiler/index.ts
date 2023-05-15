@@ -42,7 +42,7 @@ export class TypeChecker {
 				const builtin = builtInTypes.get(node.name)
 				if (builtin) {
 					ctx.unifyer.unify(node.etype, builtin);
-					return { ...node, etype: builtin };
+					return node;
 				}
 
 				const type = ctx.nameTable.get(node.name);
@@ -65,7 +65,6 @@ export class TypeChecker {
 				return node;
 			}
 
-
 			default:
 				return node;
 		}
@@ -86,7 +85,3 @@ export class TypeChecker {
 
 	}
 }
-
-
-
-
