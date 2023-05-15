@@ -5,7 +5,8 @@ import type { Type, TypeScheme, TypeVar } from './type';
 // 型変数の同値関係をUnionFind木として得る
 // TODO エラー時loc表示
 
-export class Unifyer {
+
+export class UnionFind {
 	constructor() {
 		this.ufMap = new Map();
 	}
@@ -34,21 +35,39 @@ export class Unifyer {
 			}
 		}
 	}
+	public getInternalMap(): Map<Type, Type> {
+		return this.ufMap;
+	}
+}
+
+export class Unifyer {
+	uf: UnionFind;
+	public constructor() {
+		this.uf = new UnionFind();
+	}
+
+
+	public getInferenced(t: Type) {
+		return this.uf.find(t);
+	}
+	public getInternalUF() {
+		return this.uf.getInternalMap();
+	}
 
 	public unify(lhs: Type, rhs: Type): void {
-		const lParent = this.find(lhs);
-		const rParent = this.find(rhs);
+		const lParent = this.uf.find(lhs);
+		const rParent = this.uf.find(rhs);
 
 		// 参照が同じなら何もしない
 		if (lParent === rParent) return;
 
 		// どちらかがTypeVarなら参照を統一する
 		if (lParent.type === 'typeVar') {
-			this.union(lhs, rhs);
+			this.uf.union(lhs, rhs);
 			return;
 		}
 		if (rParent.type === 'typeVar') {
-			return this.union(rhs, lhs);
+			return this.uf.union(rhs, lhs);
 		}
 
 		// 両方ともnamedTypeなら、名前の一致を確認してinnerをunify
