@@ -4,7 +4,7 @@ export function visitNodes<T>(ctx: { val: T }, nodes: Node.Node[], fn: (c: T, no
 	// ctxを更新しながら再帰的にvisitNodeを呼び出す
 	return nodes.map(node => fn(ctx.val, visitNode(ctx, node, fn)));
 }
-function visitNode<T>(ctx: { val: T }, node: Node.Node, fn: (c: T, node: Node.Node) => Node.Node): Node.Node {
+export function visitNode<T>(ctx: { val: T }, node: Node.Node, fn: (c: T, node: Node.Node) => Node.Node): Node.Node {
 	// nested nodes
 	switch (node.type) {
 		case 'def': {

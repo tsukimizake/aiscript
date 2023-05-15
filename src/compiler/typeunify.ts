@@ -89,7 +89,7 @@ export class Unifyer {
 				this.unify(lParent.ret, rParent.ret);
 				return;
 			} else {
-				throw new TypeError(`${lParent.args.length}と${rParent.args.length}の引数の数が一致しません。`);
+				throw new TypeError(`${lParent.args}と${rParent.args}の引数の数が一致しません。`);
 			}
 		}
 
