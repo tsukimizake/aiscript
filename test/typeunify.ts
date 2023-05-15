@@ -1,8 +1,6 @@
-
 import { FnType, genTypeVar, NumT } from '../src/compiler/type';
 import { Unifyer, UnionFind } from '../src/compiler/typeunify';
 import * as assert from 'assert';
-
 
 test.concurrent('union-find', async () => {
 
@@ -45,8 +43,8 @@ test.concurrent('unify tvar', async () => {
 	unifyer.unify(t0, t1);
 	unifyer.unify(t1, t2);
 
-	assert.equal(unifyer.getInferenced(t0), unifyer.getInferenced(t2));
-	assert.equal(unifyer.getInferenced(t1), unifyer.getInferenced(t2));
+	assert.equal(unifyer.getInfered(t0), unifyer.getInfered(t2));
+	assert.equal(unifyer.getInfered(t1), unifyer.getInfered(t2));
 });
 
 test.concurrent('unify namedType', async () => {
@@ -58,8 +56,8 @@ test.concurrent('unify namedType', async () => {
 	unifyer.unify(t0, t1);
 	unifyer.unify(t2, t1);
 
-	assert.equal(unifyer.getInferenced(t0), NumT);
-	assert.equal(unifyer.getInferenced(t1), NumT);
+	assert.equal(unifyer.getInfered(t0), NumT);
+	assert.equal(unifyer.getInfered(t1), NumT);
 });
 
 test.concurrent('unify fn ', async () => {
@@ -73,10 +71,11 @@ test.concurrent('unify fn ', async () => {
 	unifyer.unify(t0, t1);
 	unifyer.unify(t1, t2);
 
-	assert.equal(unifyer.getInferenced(t0).type, 'fnType');
-	assert.equal(unifyer.getInferenced(t1).type, 'fnType');
+	assert.equal(unifyer.getInfered(t0).type, 'fnType');
+	assert.equal(unifyer.getInfered(t1).type, 'fnType');
 
 });
+
 test.concurrent('unify fn (should fail on finalize)', async () => {
 
 	const t0 = genTypeVar();
@@ -89,7 +88,6 @@ test.concurrent('unify fn (should fail on finalize)', async () => {
 	unifyer.unify(t1, t2);
 	console.log(unifyer.getInternalUF());
 
-	assert.equal(unifyer.getInferenced(t0), unifyer.getInferenced(t2));
-	assert.equal(unifyer.getInferenced(t1), unifyer.getInferenced(t2));
-
+	assert.equal(unifyer.getInfered(t0), unifyer.getInfered(t2));
+	assert.equal(unifyer.getInfered(t1), unifyer.getInfered(t2));
 });

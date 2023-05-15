@@ -44,4 +44,3 @@ export const ObjT: ObjT = builtInType('obj');
 function builtInType<name extends string>(name: name): NamedType<name> {
 	return { type: 'namedType', name: name, inner: [] };
 }
-

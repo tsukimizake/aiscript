@@ -2,130 +2,128 @@ import * as Node from './node';
 
 export function visitNodes<T>(ctx: { val: T }, nodes: Node.Node[], fn: (c: T, node: Node.Node) => Node.Node): Node.Node[] {
 	// ctxを更新しながら再帰的にvisitNodeを呼び出す
-	return nodes.map(node => visitNode(ctx, node, fn));
+	return nodes.map(node => fn(ctx.val, visitNode(ctx, node, fn)));
 }
-export function visitNode<T>(ctx: { val: T }, node: Node.Node, fn: (c: T, node: Node.Node) => Node.Node): Node.Node {
-	const result = fn(ctx.val, node);
-
+function visitNode<T>(ctx: { val: T }, node: Node.Node, fn: (c: T, node: Node.Node) => Node.Node): Node.Node {
 	// nested nodes
-	switch (result.type) {
+	switch (node.type) {
 		case 'def': {
-			result.expr = visitNode(ctx, result.expr, fn) as Node.Definition['expr'];
+			node.expr = fn(ctx.val, visitNode(ctx, node.expr, fn)) as Node.Definition['expr'];
 			break;
 		}
 		case 'return': {
-			result.expr = visitNode(ctx, result.expr, fn) as Node.Return['expr'];
+			node.expr = fn(ctx.val, visitNode(ctx, node.expr, fn)) as Node.Return['expr'];
 			break;
 		}
 		case 'each': {
-			result.items = visitNode(ctx, result.items, fn) as Node.Each['items'];
-			result.for = visitNode(ctx, result.for, fn) as Node.Each['for'];
+			node.items = fn(ctx.val, visitNode(ctx, node.items, fn)) as Node.Each['items'];
+			node.for = fn(ctx.val, visitNode(ctx, node.for, fn)) as Node.Each['for'];
 			break;
 		}
 		case 'for': {
-			if (result.from != null) {
-				result.from = visitNode(ctx, result.from, fn) as Node.For['from'];
+			if (node.from != null) {
+				node.from = fn(ctx.val, visitNode(ctx, node.from, fn)) as Node.For['from'];
 			}
-			if (result.to != null) {
-				result.to = visitNode(ctx, result.to, fn) as Node.For['to'];
+			if (node.to != null) {
+				node.to = fn(ctx.val, visitNode(ctx, node.to, fn)) as Node.For['to'];
 			}
-			if (result.times != null) {
-				result.times = visitNode(ctx, result.times, fn) as Node.For['times'];
+			if (node.times != null) {
+				node.times = fn(ctx.val, visitNode(ctx, node.times, fn)) as Node.For['times'];
 			}
-			result.for = visitNode(ctx, result.for, fn) as Node.For['for'];
+			node.for = fn(ctx.val, visitNode(ctx, node.for, fn)) as Node.For['for'];
 			break;
 		}
 		case 'loop': {
-			for (let i = 0; i < result.statements.length; i++) {
-				result.statements[i] = visitNode(ctx, result.statements[i]!, fn) as Node.Loop['statements'][number];
+			for (let i = 0; i < node.statements.length; i++) {
+				node.statements[i] = fn(ctx.val, visitNode(ctx, node.statements[i]!, fn)) as Node.Loop['statements'][number];
 			}
 			break;
 		}
 		case 'addAssign':
 		case 'subAssign':
 		case 'assign': {
-			result.expr = visitNode(ctx, result.expr, fn) as Node.Assign['expr'];
-			result.dest = visitNode(ctx, result.dest, fn) as Node.Assign['dest'];
+			node.expr = fn(ctx.val, visitNode(ctx, node.expr, fn)) as Node.Assign['expr'];
+			node.dest = fn(ctx.val, visitNode(ctx, node.dest, fn)) as Node.Assign['dest'];
 			break;
 		}
 		case 'not': {
-			result.expr = visitNode(ctx, result.expr, fn) as Node.Return['expr'];
+			node.expr = fn(ctx.val, visitNode(ctx, node.expr, fn)) as Node.Return['expr'];
 			break;
 		}
 		case 'if': {
-			result.cond = visitNode(ctx, result.cond, fn) as Node.If['cond'];
-			result.then = visitNode(ctx, result.then, fn) as Node.If['then'];
-			for (const prop of result.elseif) {
-				prop.cond = visitNode(ctx, prop.cond, fn) as Node.If['elseif'][number]['cond'];
-				prop.then = visitNode(ctx, prop.then, fn) as Node.If['elseif'][number]['then'];
+			node.cond = fn(ctx.val, visitNode(ctx, node.cond, fn)) as Node.If['cond'];
+			node.then = fn(ctx.val, visitNode(ctx, node.then, fn)) as Node.If['then'];
+			for (const prop of node.elseif) {
+				prop.cond = fn(ctx.val, visitNode(ctx, prop.cond, fn)) as Node.If['elseif'][number]['cond'];
+				prop.then = fn(ctx.val, visitNode(ctx, prop.then, fn)) as Node.If['elseif'][number]['then'];
 			}
-			if (result.else != null) {
-				result.else = visitNode(ctx, result.else, fn) as Node.If['else'];
+			if (node.else != null) {
+				node.else = fn(ctx.val, visitNode(ctx, node.else, fn)) as Node.If['else'];
 			}
 			break;
 		}
 		case 'fn': {
-			for (let i = 0; i < result.children.length; i++) {
-				result.children[i] = visitNode(ctx, result.children[i]!, fn) as Node.Fn['children'][number];
+			for (let i = 0; i < node.children.length; i++) {
+				node.children[i] = fn(ctx.val, visitNode(ctx, node.children[i]!, fn)) as Node.Fn['children'][number];
 			}
 			break;
 		}
 		case 'match': {
-			result.about = visitNode(ctx, result.about, fn) as Node.Match['about'];
-			for (const prop of result.qs) {
-				prop.q = visitNode(ctx, prop.q, fn) as Node.Match['qs'][number]['q'];
-				prop.a = visitNode(ctx, prop.a, fn) as Node.Match['qs'][number]['a'];
+			node.about = fn(ctx.val, visitNode(ctx, node.about, fn)) as Node.Match['about'];
+			for (const prop of node.qs) {
+				prop.q = fn(ctx.val, visitNode(ctx, prop.q, fn)) as Node.Match['qs'][number]['q'];
+				prop.a = fn(ctx.val, visitNode(ctx, prop.a, fn)) as Node.Match['qs'][number]['a'];
 			}
-			if (result.default != null) {
-				result.default = visitNode(ctx, result.default, fn) as Node.Match['default'];
+			if (node.default != null) {
+				node.default = fn(ctx.val, visitNode(ctx, node.default, fn)) as Node.Match['default'];
 			}
 			break;
 		}
 		case 'block': {
-			for (let i = 0; i < result.statements.length; i++) {
-				result.statements[i] = visitNode(ctx, result.statements[i]!, fn) as Node.Block['statements'][number];
+			for (let i = 0; i < node.statements.length; i++) {
+				node.statements[i] = fn(ctx.val, visitNode(ctx, node.statements[i]!, fn)) as Node.Block['statements'][number];
 			}
 			break;
 		}
 		case 'tmpl': {
-			for (let i = 0; i < result.tmpl.length; i++) {
-				const item = result.tmpl[i]!;
+			for (let i = 0; i < node.tmpl.length; i++) {
+				const item = node.tmpl[i]!;
 				if (typeof item !== 'string') {
-					result.tmpl[i] = visitNode(ctx, item, fn) as Node.Tmpl['tmpl'][number];
+					node.tmpl[i] = fn(ctx.val, visitNode(ctx, item, fn)) as Node.Tmpl['tmpl'][number];
 				}
 			}
 			break;
 		}
 		case 'arr': {
-			for (let i = 0; i < result.value.length; i++) {
-				result.value[i] = visitNode(ctx, result.value[i]!, fn) as Node.Arr['value'][number];
+			for (let i = 0; i < node.value.length; i++) {
+				node.value[i] = fn(ctx.val, visitNode(ctx, node.value[i]!, fn)) as Node.Arr['value'][number];
 			}
 			break;
 		}
 		case 'call': {
-			result.target = visitNode(ctx, result.target, fn) as Node.Call['target'];
-			for (let i = 0; i < result.args.length; i++) {
-				result.args[i] = visitNode(ctx, result.args[i]!, fn) as Node.Call['args'][number];
+			node.target = fn(ctx.val, visitNode(ctx, node.target, fn)) as Node.Call['target'];
+			for (let i = 0; i < node.args.length; i++) {
+				node.args[i] = fn(ctx.val, visitNode(ctx, node.args[i]!, fn)) as Node.Call['args'][number];
 			}
 			break;
 		}
 		case 'index': {
-			result.target = visitNode(ctx, result.target, fn) as Node.Index['target'];
-			result.index = visitNode(ctx, result.index, fn) as Node.Index['index'];
+			node.target = fn(ctx.val, visitNode(ctx, node.target, fn)) as Node.Index['target'];
+			node.index = fn(ctx.val, visitNode(ctx, node.index, fn)) as Node.Index['index'];
 			break;
 		}
 		case 'prop': {
-			result.target = visitNode(ctx, result.target, fn) as Node.Prop['target'];
+			node.target = fn(ctx.val, visitNode(ctx, node.target, fn)) as Node.Prop['target'];
 			break;
 		}
 		case 'ns': {
-			for (let i = 0; i < result.members.length; i++) {
-				result.members[i] = visitNode(ctx, result.members[i]!, fn) as (typeof result.members)[number];
+			for (let i = 0; i < node.members.length; i++) {
+				node.members[i] = fn(ctx.val, visitNode(ctx, node.members[i]!, fn)) as (typeof node.members)[number];
 			}
 			break;
 		}
 	}
 
 
-	return result;
+	return node;
 }

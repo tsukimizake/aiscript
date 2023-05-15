@@ -346,10 +346,6 @@ function fromAstExpr(input: Ast.Expression): Expression {
 		}
 
 		case 'identifier':
-			const builtInType = builtInTypes.get(input.name);
-			if (builtInType) {
-				return { type: 'identifier', etype: builtInType, name: input.name };
-			}
 			return { type: input.type, etype: Types.genTypeVar(), name: input.name };
 		default:
 			throw new TypeError(`TODO: expression type: ${input.type}`);

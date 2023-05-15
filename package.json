@@ -25,6 +25,7 @@
 	},
 	"devDependencies": {
 		"@microsoft/api-extractor": "7.34.9",
+		"@types/deep-equal": "1.0.1",
 		"@types/jest": "29.5.1",
 		"@types/node": "20.1.4",
 		"@types/seedrandom": "3.0.5",
@@ -46,6 +47,7 @@
 		"autobind-decorator": "2.4.0",
 		"seedrandom": "3.0.5",
 		"stringz": "2.1.0",
+		"deep-equal": "2.2.1",
 		"uuid": "9.0.0"
 	}
 }

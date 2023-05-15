@@ -1,33 +1,78 @@
 import type * as Ast from '../node';
+import { builtInTypes } from './builtins';
 import type { Node } from './node';
 import * as CompilerNode from './node';
-import { FnType } from './type';
-import { unify } from './typeunify';
+import { FnType, genTypeVar } from './type';
+import { Unifyer } from './typeunify';
 import { visitNodes } from './visitnode';
 
-type Context = {}
+type Context = {
+	unifyer: Unifyer;
+}
 
-const initContext: Context = {};
+const initContext: Context = {
+	unifyer: new Unifyer()
+};
 
 export function typeCheck(input: Ast.Node[]): Node[] {
 	const initial = CompilerNode.fromAsts(input);
-	return visitNodes({ val: initContext }, initial, f);
+
+	visitNodes({ val: initContext }, initial, unifyVisitor);
+
+	console.log(initContext.unifyer.getInternalUF());
+	return visitNodes({ val: initContext }, initial, finalizeTypeCheck);
 }
 
-function f(_ctx: Context, node: CompilerNode.Expression): CompilerNode.Expression {
+function unifyVisitor(ctx: Context, node: CompilerNode.Expression): CompilerNode.Expression {
+	console.log(node.type);
 	switch (node.type) {
 		case 'call': {
-			unify(node.target, { etype: (node.etype as FnType).ret });
 
-			if (node.args.length != (node.etype as FnType).args.length) { throw new Error('Argument length mismatch.'); }
-			for (let i = 0; i < node.args.length; i += 1) {
-				unify(node.args[i]!, { etype: (node.etype as FnType).args[i]! });
+			const targetType = ctx.unifyer.getInfered(node.target.etype);
+
+			if (targetType.type !== 'fnType') {
+				throw new Error(`type error: ${node.target.etype} is not fnType`);
 			}
 
-			return node;
+			const fnType: FnType = { type: 'fnType', args: node.args.map((_) => { return genTypeVar(); }), ret: genTypeVar() };
+			ctx.unifyer.unify(fnType.ret, node.etype);
+			ctx.unifyer.unify(targetType, fnType);
+
+			if (node.args.length !== targetType.args.length) {
+				throw new Error(`type error: arity of ${node.target.etype} is not matched with ${node.args}`);
+			}
+
+			for (let i = 0; i < node.args.length; i++) {
+				ctx.unifyer.unify(node.args[i]!.etype, targetType.args[i]!);
+			}
+
+			return { ...node };
 		}
+		case 'identifier': {
+			const builtin = builtInTypes.get(node.name)
+			if (builtin) {
+				ctx.unifyer.unify(node.etype, builtin);
+				return { ...node, etype: builtin };
+			}
+			else { return node; }
+		}
+
 		default:
-			throw new Error('Function not implemented.');
+			return node;
 	}
 }
 
+function finalizeTypeCheck(ctx: Context, node: CompilerNode.Expression): CompilerNode.Expression {
+	switch (node.type) {
+		case 'str':
+		case 'num':
+		case 'bool':
+		case 'null':
+		case 'obj':
+		case 'not':
+			return node;
+		default:
+			return { ...node, etype: ctx.unifyer.getInfered(node.etype) };
+	}
+
+}

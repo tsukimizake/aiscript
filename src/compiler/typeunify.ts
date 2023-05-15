@@ -1,10 +1,10 @@
 import * as Types from './type';
+import deepEqual from "deep-equal";
 import type { Type, TypeScheme, TypeVar } from './type';
 
 // e1:T1, e2:T1, e3:numのときに、unify(e1, e3)したらe2にも伝播してe1,e2,e3全てnumになる動作にしたい
 // 型変数の同値関係をUnionFind木として得る
 // TODO エラー時loc表示
-
 
 export class UnionFind {
 	constructor() {
@@ -47,7 +47,7 @@ export class Unifyer {
 	}
 
 
-	public getInferenced(t: Type) {
+	public getInfered(t: Type) {
 		return this.uf.find(t);
 	}
 	public getInternalUF() {
@@ -58,10 +58,9 @@ export class Unifyer {
 		const lParent = this.uf.find(lhs);
 		const rParent = this.uf.find(rhs);
 
-		// 参照が同じなら何もしない
-		if (lParent === rParent) return;
+		if (deepEqual(lParent, rParent)) return;
 
-		// どちらかがTypeVarなら参照を統一する
+		// どちらかがTypeVarなら統一する
 		if (lParent.type === 'typeVar') {
 			this.uf.union(lhs, rhs);
 			return;
@@ -90,7 +89,7 @@ export class Unifyer {
 				this.unify(lParent.ret, rParent.ret);
 				return;
 			} else {
-				throw new TypeError(`引数の数が一致しません。${lParent.args.length}と${rParent.args.length}は一致しません。`);
+				throw new TypeError(`${lParent.args.length}と${rParent.args.length}の引数の数が一致しません。`);
 			}
 		}
 
@@ -112,7 +111,7 @@ export class Unifyer {
 				this.unify(lhs.inner[i]!, rhs.inner[i]!);
 			}
 		} else {
-			throw new TypeError(`型引数の数が一致しません。${lhs.inner.length}と${rhs.inner.length}は一致しません。`);
+			throw new TypeError(`${lhs.inner}と${rhs.inner}の型引数の数が一致しません。`);
 		}
 	}
 
