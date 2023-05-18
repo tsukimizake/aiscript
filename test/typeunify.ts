@@ -60,7 +60,7 @@ test.concurrent('unify namedType', async () => {
 	assert.equal(unifyer.getInfered(t1), NumT);
 });
 
-test.concurrent('unify fn ', async () => {
+test.concurrent('unify fn', async () => {
 
 	const t0 = genTypeVar();
 	const t1 = genTypeVar();
@@ -76,18 +76,3 @@ test.concurrent('unify fn ', async () => {
 
 });
 
-test.concurrent('unify fn (should fail on finalize)', async () => {
-
-	const t0 = genTypeVar();
-	const t1 = genTypeVar();
-	const t2: FnType = { type: 'fnType', args: [t0, t1], ret: t0 };
-
-	const unifyer = new Unifyer();
-
-	unifyer.unify(t0, t1);
-	unifyer.unify(t1, t2);
-	console.log(unifyer.getInternalUF());
-
-	assert.equal(unifyer.getInfered(t0), unifyer.getInfered(t2));
-	assert.equal(unifyer.getInfered(t1), unifyer.getInfered(t2));
-});

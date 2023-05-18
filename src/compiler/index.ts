@@ -4,7 +4,7 @@ import type { Node } from './node';
 import * as CompilerNode from './node';
 import { FnType, genTypeVar, Type } from './type';
 import { Unifyer } from './typeunify';
-import { visitNodesInnerFirst } from './visitnode';
+import { visitNodesOuterFirst } from './visitnode';
 
 type Context = {
 	unifyer: Unifyer,
@@ -20,26 +20,26 @@ export class TypeChecker {
 	public typeCheck(input: Ast.Node[]): Node[] {
 		const initial = CompilerNode.fromAsts(input);
 
-		visitNodesInnerFirst({ val: { unifyer: this.unifyer, nameTable: this.nameTable } }, initial, this.unifyVisitor);
+		visitNodesOuterFirst({ val: { unifyer: this.unifyer, nameTable: this.nameTable } }, initial, this.unifyVisitor);
 
-		return visitNodesInnerFirst({ val: { unifyer: this.unifyer, nameTable: this.nameTable } }, initial, this.finalizeTypeCheck);
+		return visitNodesOuterFirst({ val: { unifyer: this.unifyer, nameTable: this.nameTable } }, initial, this.setInferedType);
 	}
 
 	unifyVisitor(ctx: Context, node: CompilerNode.Node): CompilerNode.Node {
 		switch (node.type) {
 			case 'call': {
 
-				const targetType = ctx.unifyer.getInfered(node.target.etype);
-
 
 				const fnType: FnType = { type: 'fnType', args: node.args.map((_) => { return genTypeVar(); }), ret: genTypeVar() };
 				ctx.unifyer.unify(fnType.ret, node.etype);
-				ctx.unifyer.unify(targetType, fnType);
+				ctx.unifyer.unify(fnType, node.target.etype);
+				fnType.args.map((arg, i) => ctx.unifyer.unify(arg, node.args[i]!.etype));
 
 				return node;
 			}
 			case 'identifier': {
 				const builtin = builtInTypes.get(node.name)
+
 				if (builtin) {
 					ctx.unifyer.unify(node.etype, builtin);
 					return node;
@@ -70,7 +70,7 @@ export class TypeChecker {
 		}
 	}
 
-	finalizeTypeCheck(ctx: Context, node: CompilerNode.Expression): CompilerNode.Expression {
+	setInferedType(ctx: Context, node: CompilerNode.Node): CompilerNode.Node {
 		switch (node.type) {
 			case 'str':
 			case 'num':
@@ -80,7 +80,11 @@ export class TypeChecker {
 			case 'not':
 				return node;
 			default:
-				return { ...node, etype: ctx.unifyer.getInfered(node.etype) };
+				if ('etype' in node) {
+					return { ...node, etype: ctx.unifyer.getInfered(node.etype) };
+				} else {
+					return node;
+				}
 		}
 
 	}

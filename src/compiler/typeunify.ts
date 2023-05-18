@@ -47,8 +47,18 @@ export class Unifyer {
 	}
 
 
-	public getInfered(t: Type) {
-		return this.uf.find(t);
+	public getInfered(t: Type): Type {
+		const res = this.uf.find(t);
+		if (res.type === 'fnType') {
+			const args: Type[] = res.args.map((arg) => this.getInfered(arg));
+			const ret = this.getInfered(res.ret);
+			return { type: 'fnType', args: args, ret: ret };
+		} else if (res.type === 'typeScheme') {
+			return this.getInfered(res.t);
+		}
+		else {
+			return res;
+		}
 	}
 	public getInternalUF() {
 		return this.uf.getInternalMap();
