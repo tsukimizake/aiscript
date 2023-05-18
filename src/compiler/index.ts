@@ -1,10 +1,11 @@
-import type * as Ast from '../node';
 import { builtInTypes } from './builtins';
-import type { Node } from './node';
 import * as CompilerNode from './node';
-import { FnType, genTypeVar, Type } from './type';
+import { genTypeVar } from './type';
 import { Unifyer } from './typeunify';
 import { visitNodesOuterFirst } from './visitnode';
+import type { Node } from './node';
+import type { FnType, Type } from './type';
+import type * as Ast from '../node';
 
 type Context = {
 	unifyer: Unifyer,
@@ -16,7 +17,7 @@ export class TypeChecker {
 	constructor() {
 		this.unifyer = new Unifyer();
 		this.nameTable = new Map<string, Type>();
-	};
+	}
 	public typeCheck(input: Ast.Node[]): Node[] {
 		const initial = CompilerNode.fromAsts(input);
 
@@ -28,17 +29,14 @@ export class TypeChecker {
 	unifyVisitor(ctx: Context, node: CompilerNode.Node): CompilerNode.Node {
 		switch (node.type) {
 			case 'call': {
-
-
 				const fnType: FnType = { type: 'fnType', args: node.args.map((_) => { return genTypeVar(); }), ret: genTypeVar() };
 				ctx.unifyer.unify(fnType.ret, node.etype);
 				ctx.unifyer.unify(fnType, node.target.etype);
 				fnType.args.map((arg, i) => ctx.unifyer.unify(arg, node.args[i]!.etype));
-
 				return node;
 			}
 			case 'identifier': {
-				const builtin = builtInTypes.get(node.name)
+				const builtin = builtInTypes.get(node.name);
 
 				if (builtin) {
 					ctx.unifyer.unify(node.etype, builtin);
@@ -86,6 +84,5 @@ export class TypeChecker {
 					return node;
 				}
 		}
-
 	}
 }

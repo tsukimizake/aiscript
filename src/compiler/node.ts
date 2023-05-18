@@ -1,7 +1,7 @@
-import type * as Ast from '../node';
-import { builtInTypes } from './builtins';
-import { BoolT, FnType, NullT, NumT, ObjT, StrT, Type } from './type';
+import { BoolT, NullT, NumT, ObjT, StrT } from './type';
 import * as Types from './type';
+import type * as Ast from '../node';
+import type { Type, FnType } from './type';
 // Ast.Nodeとの差分
 // - typeをNodeから分離し、loc等を消す
 // aiscriptの意味論上の型をetypeフィールドに持たせる。typeフィールドと被る場合はあるが区別する
@@ -271,7 +271,6 @@ export type Prop = NodeBase & {
 	name: string; // プロパティ名
 };
 
-
 export function fromAsts(input: Ast.Node[]): Node[] {
 	return input.map((input) => fromAst(input));
 }
@@ -326,8 +325,6 @@ function fromAstExpr(input: Ast.Expression): Expression {
 			});
 
 			const retType = (input.retType === null) ? Types.genTypeVar() : fromAstTypeSource(input.retType);
-
-
 			const fnType: FnType = { type: 'fnType', args: args.map((arg) => arg.etype), ret: retType };
 
 			const children: Statement[] = input.children.map((child) => {

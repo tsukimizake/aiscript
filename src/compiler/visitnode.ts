@@ -1,4 +1,4 @@
-import * as Node from './node';
+import type * as Node from './node';
 
 export function visitNodesInnerFirst<T>(ctx: { val: T }, nodes: Node.Node[], fn: (c: T, node: Node.Node) => Node.Node): Node.Node[] {
 	// ctxを更新しながら再帰的にvisitNodeを呼び出す
@@ -124,10 +124,8 @@ export function visitNodeInnerFirst<T>(ctx: { val: T }, node: Node.Node, fn: (c:
 		}
 	}
 
-
 	return node;
 }
-
 
 export function visitNodesOuterFirst<T>(ctx: { val: T }, nodes: Node.Node[], fn: (c: T, node: Node.Node) => Node.Node): Node.Node[] {
 	return nodes.map(node => visitNodeOuterFirst(ctx, node, fn));
@@ -257,7 +255,6 @@ export function visitNodeOuterFirst<T>(ctx: { val: T }, node: Node.Node, fn: (c:
 			break;
 		}
 	}
-
 
 	return result;
 }

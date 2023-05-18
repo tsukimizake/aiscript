@@ -1,5 +1,5 @@
 import * as Types from './type';
-import deepEqual from "deep-equal";
+import deepEqual from 'deep-equal';
 import type { Type, TypeScheme, TypeVar } from './type';
 
 // e1:T1, e2:T1, e3:numのときに、unify(e1, e3)したらe2にも伝播してe1,e2,e3全てnumになる動作にしたい
@@ -22,19 +22,17 @@ export class UnionFind {
 	}
 
 	public find(a: Type): Type {
-		let parent = this.ufMap.get(a);
+		const parent = this.ufMap.get(a);
 
-		while (true) {
-			if (parent === undefined || parent === a) {
-				return a;
-			} else {
-				// parentにさらにparentがある場合を再帰的に見に行って、見つけたらpath compression
-				const res = this.find(parent);
-				this.ufMap.set(a, res);
-				return res;
-			}
+		if (parent === undefined || parent === a) {
+			return a;
 		}
+		// parentにさらにparentがある場合を再帰的に見に行って、見つけたらpath compression
+		const res = this.find(parent);
+		this.ufMap.set(a, res);
+		return res;
 	}
+
 	public getInternalMap(): Map<Type, Type> {
 		return this.ufMap;
 	}
@@ -45,7 +43,6 @@ export class Unifyer {
 	public constructor() {
 		this.uf = new UnionFind();
 	}
-
 
 	public getInfered(t: Type): Type {
 		const res = this.uf.find(t);
@@ -60,7 +57,7 @@ export class Unifyer {
 			return res;
 		}
 	}
-	public getInternalUF() {
+	public getInternalUF(): Map<Type, Type> {
 		return this.uf.getInternalMap();
 	}
 
@@ -115,7 +112,7 @@ export class Unifyer {
 		throw new Error(`unify failed! ${lParent} and ${rParent}`);
 	}
 
-	unifyNamedTypeInners(lhs: Types.NamedType<string>, rhs: Types.NamedType<string>) {
+	unifyNamedTypeInners(lhs: Types.NamedType<string>, rhs: Types.NamedType<string>): void {
 		if (lhs.inner.length === rhs.inner.length) {
 			for (let i = 0; i < lhs.inner.length; i++) {
 				this.unify(lhs.inner[i]!, rhs.inner[i]!);
@@ -154,12 +151,10 @@ export class Unifyer {
 				args: t.args.map((arg) => this.replaceTypeVar(arg, typeVar, newTV)),
 				ret: this.replaceTypeVar(t.ret, typeVar, newTV),
 			};
-		} else if (t.type === 'typeScheme') {
+		} else { // typescheme
 			// TODO test
 			const t1 = this.instanciateTypeScheme(t);
 			return this.replaceTypeVar(t1, typeVar, newTV);
-		} else {
-			throw new Error(`replaceTypeVar failed! ${t}`);
 		}
 	}
 }
