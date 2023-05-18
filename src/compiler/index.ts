@@ -4,7 +4,7 @@ import type { Node } from './node';
 import * as CompilerNode from './node';
 import { FnType, genTypeVar, Type } from './type';
 import { Unifyer } from './typeunify';
-import { visitNodes } from './visitnode';
+import { visitNodesInnerFirst } from './visitnode';
 
 type Context = {
 	unifyer: Unifyer,
@@ -20,9 +20,9 @@ export class TypeChecker {
 	public typeCheck(input: Ast.Node[]): Node[] {
 		const initial = CompilerNode.fromAsts(input);
 
-		visitNodes({ val: { unifyer: this.unifyer, nameTable: this.nameTable } }, initial, this.unifyVisitor);
+		visitNodesInnerFirst({ val: { unifyer: this.unifyer, nameTable: this.nameTable } }, initial, this.unifyVisitor);
 
-		return visitNodes({ val: { unifyer: this.unifyer, nameTable: this.nameTable } }, initial, this.finalizeTypeCheck);
+		return visitNodesInnerFirst({ val: { unifyer: this.unifyer, nameTable: this.nameTable } }, initial, this.finalizeTypeCheck);
 	}
 
 	unifyVisitor(ctx: Context, node: CompilerNode.Node): CompilerNode.Node {
