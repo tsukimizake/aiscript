@@ -7,12 +7,12 @@ import * as assert from 'assert';
 import { Parser } from '../src';
 import * as Compiler from '../src/compiler/node';
 import { BoolT, NullT, NumT, StrT, Type } from '../src/compiler/type';
-import * as Index from '../src/compiler/index';
+import { TypeChecker } from '../src/compiler/typecheck';
 
 const typecheckTest = (program: string): Compiler.Node[] => {
 	const parser = new Parser();
 	const ast = parser.parse(program);
-	const checker = new Index.TypeChecker();
+	const checker = new TypeChecker();
 	const checked = checker.typeCheck(ast);
 	return checked;
 

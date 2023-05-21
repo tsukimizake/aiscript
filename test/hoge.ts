@@ -1,13 +1,13 @@
 import * as assert from 'assert';
 import { Parser } from '../src';
 import * as Compiler from '../src/compiler/node';
-import { BoolT, NullT, NumT, StrT, Type, TypeVar } from '../src/compiler/type';
-import * as Index from '../src/compiler/index';
+import { NumT, Type } from '../src/compiler/type';
+import { TypeChecker } from '../src/compiler/typecheck';
 
 const typecheckTest = (program: string): Compiler.Node[] => {
 	const parser = new Parser();
 	const ast = parser.parse(program);
-	const typeChecker = new Index.TypeChecker();
+	const typeChecker = new TypeChecker();
 	const checked = typeChecker.typeCheck(ast);
 	return checked;
 
@@ -30,7 +30,6 @@ test.concurrent('fn with many type decls', async () => {
 
 	assert.deepEqual((res[1] as any).args.map((arg: { etype: Type; }) => arg.etype), [NumT, NumT]);
 });
-
 
 // test.concurrent('fn with many type decls', async () => {
 // 	const res = typecheckTest(`
